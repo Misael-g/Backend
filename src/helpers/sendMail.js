@@ -45,7 +45,7 @@ const sendMailToRecoveryPassword = (userMail, token) => {
             <h1 style="color: #1a3c6e;">Restablece tu contraseña</h1>
             <p>Has solicitado restablecer tu contraseña en UniBooks. Haz clic en el siguiente botón:</p>
             <a 
-                href="${process.env.URL_FRONTEND}recuperarpassword/${token}"
+                href="${process.env.URL_FRONTEND}/recuperarpassword/${token}"
                 style="
                     display: inline-block;
                     background-color: #c0392b;

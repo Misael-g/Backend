@@ -1,6 +1,7 @@
 import Usuario from '../models/Usuario.js'
 import { sendMailToRegister, sendMailToRecoveryPassword } from '../helpers/sendMail.js'
 import { crearTokenJWT } from '../middlewares/JWT.js'
+import mongoose from 'mongoose'
 
 
 const registro = async (req, res) => {
@@ -199,6 +200,90 @@ const login = async (req, res) => {
     }
 }
 
+const perfil = (req, res) => {
+    // Excluir campos sensibles internos
+    const { token, confirmEmail, createdAt, updatedAt, __v, ...datosPerfil } = req.usuarioHeader
+    res.status(200).json(datosPerfil)
+}
+
+
+const actualizarPerfil = async (req, res) => {
+    try {
+        const { id } = req.params
+ 
+        // Validar que el ID sea un ObjectId válido de MongoDB
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ msg: `ID inválido: ${id}` })
+        }
+ 
+        // Buscar el usuario en la BDD
+        const usuarioBDD = await Usuario.findById(id)
+        if (!usuarioBDD) {
+            return res.status(404).json({ msg: `No existe el usuario con ID ${id}` })
+        }
+ 
+        const { nombre, email, telefono, carrera } = req.body
+ 
+        // Si viene un email distinto, verificar que no esté en uso
+        if (email && usuarioBDD.email !== email) {
+            const emailExistente = await Usuario.findOne({ email })
+            if (emailExistente) {
+                return res.status(400).json({ msg: 'El email ya se encuentra registrado por otro usuario' })
+            }
+        }
+ 
+        // Actualizar solo los campos  
+        usuarioBDD.nombre    = nombre   ?? usuarioBDD.nombre
+        usuarioBDD.email     = email    ?? usuarioBDD.email
+        usuarioBDD.telefono  = telefono ?? usuarioBDD.telefono
+        usuarioBDD.carrera   = carrera  ?? usuarioBDD.carrera
+ 
+        await usuarioBDD.save()
+ 
+        // Responder sin datos sensibles
+        const { password, token, confirmEmail, status, createdAt, updatedAt, __v, ...datosActualizados } = usuarioBDD.toObject()
+        res.status(200).json(datosActualizados)
+ 
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({ msg: `Error en el servidor - ${error}` })
+    }
+}
+
+const actualizarPassword = async (req, res) => {
+    try {
+        const { passwordactual, passwordnuevo } = req.body
+ 
+        if (!passwordactual || !passwordnuevo) {
+            return res.status(400).json({ msg: 'Debes enviar el password actual y el nuevo' })
+        }
+ 
+        // Buscar usuario desde el token (req.usuarioHeader viene del middleware)
+        const usuarioBDD = await Usuario.findById(req.usuarioHeader._id)
+        if (!usuarioBDD) {
+            return res.status(404).json({ msg: 'No existe el usuario' })
+        }
+ 
+        // Verificar que el password actual sea correcto
+        const passwordValido = await usuarioBDD.matchPassword(passwordactual)
+        if (!passwordValido) {
+            return res.status(401).json({ msg: 'El password actual no es correcto' })
+        }
+ 
+        // Cifrar y guardar el nuevo password
+        usuarioBDD.password = await usuarioBDD.encryptPassword(passwordnuevo)
+        await usuarioBDD.save()
+ 
+        res.status(200).json({ msg: 'Password actualizado correctamente' })
+ 
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({ msg: `Error en el servidor - ${error}` })
+    }
+}
+
+
+
 
 
 export { 
@@ -207,5 +292,8 @@ export {
     recuperarPassword,
     comprobarTokenPassword,
     crearNuevoPassword,
-    login
+    login,
+    perfil,
+    actualizarPerfil,
+    actualizarPassword
  }

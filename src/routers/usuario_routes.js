@@ -5,8 +5,12 @@ import {
     recuperarPassword,
     comprobarTokenPassword,
     crearNuevoPassword,
-    login
+    login,
+    perfil,
+    actualizarPerfil,
+    actualizarPassword
 } from '../controllers/usuario_controller.js'
+import { verificarTokenJWT } from '../middlewares/JWT.js'
 
 const router = Router()
 
@@ -27,7 +31,16 @@ router.post('/nuevopassword/:token', crearNuevoPassword)
 //login
 router.post('/login', login)
 
+// rutas privadas (requieren autenticacion)
 
+//Ver perfil
+router.get('/perfil', verificarTokenJWT, perfil) 
+
+//actualizarperfil
+router.put('/actualizarperfil/:id', verificarTokenJWT, actualizarPerfil)
+
+//actualizarpassword
+router.put('/actualizarpassword', verificarTokenJWT, actualizarPassword)
 
 
 export default router

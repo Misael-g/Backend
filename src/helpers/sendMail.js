@@ -10,7 +10,7 @@ const sendMailToRegister = (userMail, token) => {
             <h1 style="color: #1a3c6e;">¡Bienvenido a UniBooks!</h1>
             <p>Gracias por registrarte. Por favor confirma tu cuenta haciendo clic en el siguiente botón:</p>
             <a 
-                href="${process.env.URL_BACKEND}api/confirmar/${token}"
+                href="${process.env.URL_FRONTEND}/confirmar/${token}"
                 style="
                     display: inline-block;
                     background-color: #1a3c6e;

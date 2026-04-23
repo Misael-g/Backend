@@ -1,5 +1,6 @@
 import Usuario from '../models/Usuario.js'
 import { sendMailToRegister, sendMailToRecoveryPassword } from '../helpers/sendMail.js'
+import { crearTokenJWT } from '../middlewares/JWT.js'
 
 
 const registro = async (req, res) => {
@@ -142,11 +143,69 @@ const crearNuevoPassword = async (req, res) => {
     }
 }
 
+const login = async (req, res) => {
+    try {
+        const { email, password } = req.body
+ 
+        // Validar campos
+        if (!email || !password) {
+            return res.status(400).json({ msg: 'Debes llenar todos los campos' })
+        }
+ 
+        // Buscar usuario en BDD (excluir campos sensibles/internos)
+        const usuarioBDD = await Usuario.findOne({ email })
+            .select("-__v -token -updatedAt -createdAt")
+ 
+        // Verificar si el usuario existe
+        if (!usuarioBDD) {
+            return res.status(404).json({ msg: 'El usuario no se encuentra registrado' })
+        }
+ 
+        // Verificar si la cuenta está confirmada
+        if (!usuarioBDD.confirmEmail) {
+            return res.status(403).json({ msg: 'Debes verificar tu cuenta antes de iniciar sesión' })
+        }
+ 
+        // Verificar si la cuenta está activa
+        if (!usuarioBDD.status) {
+            return res.status(403).json({ msg: 'Tu cuenta ha sido desactivada, contacta al administrador' })
+        }
+ 
+        // Verificar el password
+        const passwordValido = await usuarioBDD.matchPassword(password)
+        if (!passwordValido) {
+            return res.status(401).json({ msg: 'El password no es correcto' })
+        }
+ 
+        // Generar JWT
+        const token = crearTokenJWT(usuarioBDD._id, usuarioBDD.rol)
+ 
+        // Extraer campos a retornar
+        const { nombre, email: correo, telefono, carrera, rol, _id } = usuarioBDD
+ 
+        res.status(200).json({
+            token,
+            _id,
+            nombre,
+            email: correo,
+            telefono,
+            carrera,
+            rol
+        })
+ 
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({ msg: `Error en el servidor - ${error}` })
+    }
+}
+
+
 
 export { 
     registro,
     confirmarEmail,
     recuperarPassword,
     comprobarTokenPassword,
-    crearNuevoPassword
+    crearNuevoPassword,
+    login
  }

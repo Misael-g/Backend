@@ -83,12 +83,141 @@ const detallePublicacion = async (req, res) => {
     }
 }
 
+//     Editar una publicacion propia
 
+const editarPublicacion = async (req, res) => {
+    try {
+        const { id } = req.params
+        const { titulo, descripcion, precio } = req.body
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(404).json({ msg: `ID inválido: ${id}` })
+        }
+
+        const publicacionBDD = await Publicacion.findById(id)
+        if (!publicacionBDD) {
+            return res.status(404).json({ msg: 'Publicación no encontrada' })
+        }
+
+        // Solo el dueño puede editar
+        if (publicacionBDD.usuario.toString() !== req.usuarioHeader._id.toString()) {
+            return res.status(403).json({ msg: 'No tienes permisos para editar esta publicación' })
+        }
+
+        // Actualizar campos si vienen en el body
+        publicacionBDD.titulo      = titulo      ?? publicacionBDD.titulo
+        publicacionBDD.descripcion = descripcion ?? publicacionBDD.descripcion
+        publicacionBDD.precio      = precio      ?? publicacionBDD.precio
+
+        // Si viene nueva imagen, eliminar la anterior y subir la nueva
+        if (req.files?.imagen) {
+            await eliminarImagenCloudinary(publicacionBDD.imagenID)
+            const { secure_url, public_id } = await subirImagenCloudinary(req.files.imagen.tempFilePath)
+            publicacionBDD.imagen   = secure_url
+            publicacionBDD.imagenID = public_id
+        }
+
+        await publicacionBDD.save()
+        res.status(200).json({ msg: 'Publicación actualizada exitosamente', publicacion: publicacionBDD })
+
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({ msg: `Error en el servidor - ${error}` })
+    }
+}
+
+//    Cambiar el estado del libro a disponible o vendido
+
+const cambiarEstado = async (req, res) => {
+    try {
+        const { id } = req.params
+        const { estado } = req.body
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(404).json({ msg: `ID inválido: ${id}` })
+        }
+
+        if (!['disponible', 'vendido'].includes(estado)) {
+            return res.status(400).json({ msg: 'Estado inválido. Usa "disponible" o "vendido"' })
+        }
+
+        const publicacionBDD = await Publicacion.findById(id)
+        if (!publicacionBDD) {
+            return res.status(404).json({ msg: 'Publicación no encontrada' })
+        }
+
+        // Solo el dueño puede cambiar el estado
+        if (publicacionBDD.usuario.toString() !== req.usuarioHeader._id.toString()) {
+            return res.status(403).json({ msg: 'No tienes permisos para modificar esta publicación' })
+        }
+
+        publicacionBDD.estado = estado
+        await publicacionBDD.save()
+
+        res.status(200).json({ msg: `Estado actualizado a "${estado}"`, publicacion: publicacionBDD })
+
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({ msg: ` Error en el servidor - ${error}` })
+    }
+}
+
+
+//     Eliminar una publicacion propia
+
+const eliminarPublicacion = async (req, res) => {
+    try {
+        const { id } = req.params
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(404).json({ msg: `ID inválido: ${id}` })
+        }
+
+        const publicacionBDD = await Publicacion.findById(id)
+        if (!publicacionBDD) {
+            return res.status(404).json({ msg: 'Publicación no encontrada' })
+        }
+
+        // Solo el dueño puede eliminar
+        if (publicacionBDD.usuario.toString() !== req.usuarioHeader._id.toString()) {
+            return res.status(403).json({ msg: 'No tienes permisos para eliminar esta publicación' })
+        }
+
+        // Eliminar imagen de Cloudinary si existe
+        await eliminarImagenCloudinary(publicacionBDD.imagenID)
+
+        await publicacionBDD.deleteOne()
+        res.status(200).json({ msg: 'Publicación eliminada exitosamente' })
+
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({ msg: ` Error en el servidor - ${error}` })
+    }
+}
+
+//     Listar mis propias publicaciones todas 
+
+const misPublicaciones = async (req, res) => {
+    try {
+        const publicaciones = await Publicacion.find({ usuario: req.usuarioHeader._id })
+            .select('-__v -imagenID')
+            .sort({ createdAt: -1 })
+
+        res.status(200).json(publicaciones)
+
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({ msg: ` Error en el servidor - ${error}` })
+    }
+}
 
 
 export {
     crearPublicacion,
     listarPublicaciones,
     detallePublicacion,
-
+    editarPublicacion,
+    cambiarEstado,
+    eliminarPublicacion,
+    misPublicaciones
 }

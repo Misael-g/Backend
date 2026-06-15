@@ -226,19 +226,10 @@ const actualizarPerfil = async (req, res) => {
             return res.status(404).json({ msg: `No existe el usuario con ID ${id}` })
         }
  
-        const { nombre, email, telefono, carrera } = req.body
- 
-        // Si viene un email distinto, verificar que no esté en uso
-        if (email && usuarioBDD.email !== email) {
-            const emailExistente = await Usuario.findOne({ email })
-            if (emailExistente) {
-                return res.status(400).json({ msg: 'El email ya se encuentra registrado por otro usuario' })
-            }
-        }
- 
-        // Actualizar solo los campos  
+        const { nombre, telefono, carrera } = req.body
+
+        // Actualizar solo los campos permitidos (email no se puede cambiar)
         usuarioBDD.nombre    = nombre   ?? usuarioBDD.nombre
-        usuarioBDD.email     = email    ?? usuarioBDD.email
         usuarioBDD.telefono  = telefono ?? usuarioBDD.telefono
         usuarioBDD.carrera   = carrera  ?? usuarioBDD.carrera
  

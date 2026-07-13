@@ -1,26 +1,20 @@
-import nodemailer from 'nodemailer'
+import { BrevoClient } from '@getbrevo/brevo'
 import dotenv from 'dotenv'
 dotenv.config()
 
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.USER_MAILTRAP,
-        pass: process.env.PASS_MAILTRAP
-    }
-})
-
-
+const brevo = new BrevoClient({ apiKey: process.env.BREVO_API_KEY })
 
 const sendMail = async (to, subject, html) => {
     try {
-        const info = await transporter.sendMail({
-            from: '"UniBooks" <admin@unibooks.com>',
-            to,
+        const data = await brevo.transactionalEmails.sendTransacEmail({
+            sender: { name: 'UniBooks', email: process.env.USER_MAILTRAP }, // tu correo verificado en Brevo
+            to: [{ email: to }],
             subject,
-            html
+            htmlContent: html
         })
-        console.log('Email enviado:', info.messageId)
+
+        console.log('Email enviado:', data)
+        return data
     } catch (error) {
         console.error('Error enviando email:', error.message)
         throw error
